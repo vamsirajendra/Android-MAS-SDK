@@ -10,17 +10,6 @@ package com.ca.mas.core.cert;
 
 import android.util.Base64;
 
-import org.spongycastle.asn1.ASN1EncodableVector;
-import org.spongycastle.asn1.ASN1Set;
-import org.spongycastle.asn1.DERSet;
-import org.spongycastle.asn1.x509.BasicConstraints;
-import org.spongycastle.asn1.x509.X509Extensions;
-import org.spongycastle.jce.PKCS10CertificationRequest;
-import org.spongycastle.jce.X509KeyUsage;
-import org.spongycastle.x509.X509V3CertificateGenerator;
-import org.spongycastle.x509.extension.AuthorityKeyIdentifierStructure;
-import org.spongycastle.x509.extension.SubjectKeyIdentifierStructure;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -92,47 +81,6 @@ public class CertUtils {
 
 
     /**
-     * Generate a self-signed certificate.
-     *
-     * @param dn subject DN.  Required.
-     * @param subjectPublicKey public key to "certify" by encoding it into the cert.  Required.
-     * @param issuerPrivateKey private key with which to sign the cert.  Required.
-     * @param random a SecureRandom instance to use for choosing a serial number.
-     * @return a new X509Certificate instance.  Never null.
-     * @throws CertificateException if a cert cannot be generated.
-     */
-    public static X509Certificate generateSelfSignedCertificate(String dn, PublicKey subjectPublicKey, PrivateKey issuerPrivateKey, SecureRandom random) throws CertificateException {
-        X500Principal subjectDn = new X500Principal(dn);
-        String sigAlg = "SHA1withRSA";
-        int daysUntilExpiry = 10 * 365;
-        Date notBefore = new Date(new Date().getTime() - (10 * 60 * 1000L)); // 10 min ago
-        Date notAfter = new Date(notBefore.getTime() + (daysUntilExpiry * 24 * 60 * 60 * 1000L)); // daysUntilExpiry days after notBefore
-        BigInteger serialNumber = new BigInteger(64, random).abs();
-
-        X509V3CertificateGenerator certgen = new X509V3CertificateGenerator();
-
-        certgen.setSerialNumber(serialNumber);
-        certgen.setNotBefore(notBefore);
-        certgen.setNotAfter(notAfter);
-        certgen.setSignatureAlgorithm(sigAlg);
-        certgen.setSubjectDN(subjectDn);
-        certgen.setIssuerDN(subjectDn);
-        certgen.setPublicKey(subjectPublicKey);
-
-        certgen.addExtension(X509Extensions.BasicConstraints, true, new BasicConstraints(false));
-        certgen.addExtension(X509Extensions.KeyUsage, true, new X509KeyUsage(KU_digitalSignature | KU_keyEncipherment));
-
-        try {
-            certgen.addExtension(X509Extensions.SubjectKeyIdentifier, false, new SubjectKeyIdentifierStructure(subjectPublicKey));
-            certgen.addExtension(X509Extensions.AuthorityKeyIdentifier, false, new AuthorityKeyIdentifierStructure(subjectPublicKey));
-
-            return certgen.generate(issuerPrivateKey);
-        } catch (Exception e) {
-            throw new CertificateException("Unable to generate self-signed cert: " + e.getMessage(), e);
-        }
-    }
-
-    /**
      * Generate a PKCS#10 certificate signing request from the specified parameters.
      *
      * @param commonName  the username.  Required.
@@ -145,10 +93,15 @@ public class CertUtils {
      */
     public static byte[] generateCertificateSigningRequest(String commonName, String deviceId, String deviceName, String organization, KeyPair keyPair) throws CertificateException {
         try {
-            X500Principal subject = new X500Principal("cn=" + commonName + ", ou=" + deviceId + ", dc=" + deviceName + ", o=" + organization);
-            ASN1Set attrs = new DERSet(new ASN1EncodableVector());
-            PKCS10CertificationRequest csr = new PKCS10CertificationRequest("SHA1withRSA", subject, keyPair.getPublic(), attrs, keyPair.getPrivate(), null);
-            return csr.getEncoded();
+            String sigAlg = "SHA1withRSA"; 
+            PKCS10 pkcs10 = new PKCS10(keyPair.getPublic()); 
+            Signature signature = Signature.getInstance(sigAlg); 
+            signature.initSign(keyPair.getPrivate()); 
+            // common, orgUnit, org, locality, state, country 
+            X500Name x500Name = new X500Name(commonName, deviceId, deviceName, organization, true); 
+            pkcs10.encodeAndSign(new X500Signer(signature, x500Name)); 
+            byte[] c = pkcs10.getEncoded();
+            return c;
         } catch (Exception e) {
             throw new CertificateException("Unable to generate certificate signing request: " + e.getMessage(), e);
         }

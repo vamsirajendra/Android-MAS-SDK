@@ -8,8 +8,6 @@
 
 package com.ca.mas.core.util;
 
-import org.spongycastle.jce.provider.BouncyCastleProvider;
-
 import java.security.KeyFactory;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -34,7 +32,7 @@ public class KeyUtils {
      */
     public static KeyPair generateRsaKeyPair(int keysize) {
         try {
-            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", new BouncyCastleProvider());
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
             kpg.initialize(keysize);
             return kpg.generateKeyPair();
         } catch (NoSuchAlgorithmException e) {
