@@ -29,6 +29,11 @@ import java.util.List;
 
 import javax.security.auth.x500.X500Principal;
 
+import sun.security.pkcs.PKCS10;
+import sun.security.x509.X500Name;
+import sun.security.x509.X500Signer;
+
+
 /**
  * Utility methods for working with certificate and CSRs.
  */
